@@ -1,25 +1,622 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Mahebourg Delivery Admin</title>
+
 <style>
-body{font-family:Arial;margin:0;background:#f4f6f8;color:#17202a}header{background:#111827;color:white;padding:18px}
-main{max-width:900px;margin:auto;padding:16px}.card{background:white;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0001}
-input,button{width:100%;padding:12px;margin:7px 0;box-sizing:border-box;border-radius:9px;border:1px solid #ddd}
-button{background:#16a34a;color:white;border:0;font-weight:bold}.blue{background:#2563eb}.red{background:#dc2626}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.hidden{display:none}.muted{color:#6b7280;font-size:13px}
-</style></head><body>
-<header><h2>🛵 Mahebourg Delivery</h2><div>Admin Panel</div></header><main>
-<div id="login" class="card"><h3>Admin Login</h3><input id="pin" type="password" placeholder="Admin PIN"><button onclick="login()">Login</button><p id="msg" class="muted"></p></div>
-<div id="app" class="hidden"><div class="card"><h3>📊 Orders</h3><div id="count"></div><button class="blue" onclick="listen()">Refresh</button></div><div id="orders"></div></div>
+body{
+  font-family:Arial,sans-serif;
+  margin:0;
+  background:#f4f6f8;
+  color:#17202a;
+}
+
+header{
+  background:#111827;
+  color:white;
+  padding:18px;
+}
+
+main{
+  max-width:900px;
+  margin:auto;
+  padding:16px;
+}
+
+.card{
+  background:white;
+  border-radius:14px;
+  padding:16px;
+  margin:12px 0;
+  box-shadow:0 2px 10px #0001;
+}
+
+input,select,button{
+  width:100%;
+  padding:12px;
+  margin:7px 0;
+  box-sizing:border-box;
+  border-radius:9px;
+  border:1px solid #ddd;
+}
+
+button{
+  background:#16a34a;
+  color:white;
+  border:0;
+  font-weight:bold;
+}
+
+.blue{
+  background:#2563eb;
+}
+
+.orange{
+  background:#ea580c;
+}
+
+.red{
+  background:#dc2626;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+.hidden{
+  display:none;
+}
+
+.muted{
+  color:#6b7280;
+  font-size:13px;
+}
+
+.status{
+  font-weight:bold;
+  font-size:16px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>🛵 Mahebourg Delivery</h2>
+<div>Admin Panel</div>
+</header>
+
+<main>
+
+<!-- LOGIN -->
+<div id="login" class="card">
+
+<h3>🔐 Admin Login</h3>
+
+<input
+id="pin"
+type="password"
+placeholder="Enter Admin PIN">
+
+<button onclick="login()">
+Login
+</button>
+
+<p id="loginMessage" class="muted"></p>
+
+</div>
+
+
+<!-- ADMIN APP -->
+<div id="app" class="hidden">
+
+<div class="card">
+
+<h3>📊 Orders Dashboard</h3>
+
+<div id="orderCount">
+Loading orders...
+</div>
+
+<button class="blue" onclick="listenOrders()">
+🔄 Refresh Orders
+</button>
+
+</div>
+
+<div id="orders"></div>
+
+</div>
+
 </main>
+
+
 <script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
-import {getDatabase,ref,onValue,update} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
-const firebaseConfig={apiKey:"AIzaSyBZzPmYBJNqio_IDrPn6abTVFoci-7GKtI",authDomain:"delivery-5d936.firebaseapp.com",databaseURL:"https://delivery-5d936-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"delivery-5d936",storageBucket:"delivery-5d936.firebasestorage.app",messagingSenderId:"980186352754",appId:"1:980186352754:web:02785a4144fd6f174746eb"};
-const db=getDatabase(initializeApp(firebaseConfig));
-const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-window.login=()=>{if(document.getElementById("pin").value==="1234"){sessionStorage.admin="1";document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");listen()}else document.getElementById("msg").textContent="Wrong PIN";};
-window.listen=()=>onValue(ref(db,"orders"),s=>{let d=s.val()||{},ids=Object.keys(d);document.getElementById("count").textContent=ids.length+" order(s)";document.getElementById("orders").innerHTML=ids.reverse().map(id=>{let o=d[id]||{},s=o.status||"New";return `<div class="card"><h3>📦 ${esc(id)}</h3><b>Status: ${esc(s)}</b><p><b>Customer:</b> ${esc(o.customerName||o.name)}</p><p><b>Phone:</b> ${esc(o.phone)}</p><p><b>Items:</b><br>${esc(o.items)}</p><p><b>Pickup:</b> ${esc(o.pickupLocation||o.pickup)}</p><p><b>Delivery:</b> ${esc(o.deliveryLocation||o.delivery)}</p><div class="grid"><button onclick="status('${id}','Accepted')">Accept</button><button class="blue" onclick="status('${id}','Shopping Started')">Shopping Started</button><button class="blue" onclick="status('${id}','Out for Delivery')">Out for Delivery</button><button onclick="status('${id}','Delivered')">Delivered</button></div><button class="red" onclick="status('${id}','Cancelled')">Cancel</button></div>`}).join("")||"<div class='card'>No orders yet.</div>"}); 
-window.status=async(id,s)=>update(ref(db,"orders/"+id),{status:s});
-if(sessionStorage.admin==="1"){document.getElementById("login").classList.add("hidden");document.getElementById("app").classList.remove("hidden");listen();}
-</script></body></html>
+
+import {
+initializeApp
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+
+import {
+getDatabase,
+ref,
+onValue,
+update
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+
+/* FIREBASE CONFIG */
+
+const firebaseConfig = {
+
+apiKey:"AIzaSyBZzPmYBJNqio_IDrPn6abTVFoci-7GKtI",
+
+authDomain:
+"delivery-5d936.firebaseapp.com",
+
+databaseURL:
+"https://delivery-5d936-default-rtdb.asia-southeast1.firebasedatabase.app",
+
+projectId:
+"delivery-5d936",
+
+storageBucket:
+"delivery-5d936.firebasestorage.app",
+
+messagingSenderId:
+"980186352754",
+
+appId:
+"1:980186352754:web:02785a4144fd6f174746eb"
+
+};
+
+
+/* START FIREBASE */
+
+const app = initializeApp(firebaseConfig);
+
+const db = getDatabase(app);
+
+
+/* RIDERS */
+
+const riders = [
+
+"Rider 1",
+
+"Rider 2",
+
+"Rider 3"
+
+];
+
+
+/* SECURITY DISPLAY */
+
+function escapeHTML(value){
+
+return String(value ?? "")
+.replace(/[&<>"']/g,function(char){
+
+return {
+
+"&":"&amp;",
+"<":"&lt;",
+">":"&gt;",
+'"':"&quot;",
+"'":"&#039;"
+
+}[char];
+
+});
+
+}
+
+
+/* ADMIN LOGIN */
+
+window.login = function(){
+
+const pin =
+document.getElementById("pin").value;
+
+if(pin === "1234"){
+
+sessionStorage.setItem(
+"adminLoggedIn",
+"true"
+);
+
+document
+.getElementById("login")
+.classList.add("hidden");
+
+document
+.getElementById("app")
+.classList.remove("hidden");
+
+listenOrders();
+
+}else{
+
+document
+.getElementById("loginMessage")
+.textContent =
+"❌ Wrong PIN";
+
+}
+
+};
+
+
+/* LOAD ORDERS */
+
+window.listenOrders = function(){
+
+const ordersRef =
+ref(db,"orders");
+
+onValue(
+ordersRef,
+(snapshot)=>{
+
+const data =
+snapshot.val() || {};
+
+const orderIDs =
+Object.keys(data);
+
+document
+.getElementById("orderCount")
+.textContent =
+orderIDs.length +
+" order(s) found";
+
+renderOrders(data,orderIDs);
+
+});
+
+};
+
+
+/* DISPLAY ORDERS */
+
+function renderOrders(data,orderIDs){
+
+const container =
+document.getElementById("orders");
+
+if(orderIDs.length === 0){
+
+container.innerHTML =
+`
+<div class="card">
+<h3>No orders yet</h3>
+</div>
+`;
+
+return;
+
+}
+
+
+/* NEWEST FIRST */
+
+orderIDs.reverse();
+
+
+container.innerHTML =
+orderIDs.map(function(id){
+
+const order =
+data[id] || {};
+
+const status =
+order.status || "New";
+
+const assignedRider =
+order.rider || "";
+
+
+/* RIDER DROPDOWN */
+
+let riderOptions =
+`
+<option value="">
+Select Rider
+</option>
+`;
+
+riders.forEach(function(rider){
+
+const selected =
+assignedRider === rider
+? "selected"
+: "";
+
+riderOptions +=
+`
+<option
+value="${rider}"
+${selected}>
+${rider}
+</option>
+`;
+
+});
+
+
+return `
+
+<div class="card">
+
+<h3>
+📦 ${escapeHTML(id)}
+</h3>
+
+
+<p class="status">
+Status:
+${escapeHTML(status)}
+</p>
+
+
+<p>
+<b>Customer:</b><br>
+${escapeHTML(
+order.customerName ||
+order.name ||
+"Not provided"
+)}
+</p>
+
+
+<p>
+<b>Phone:</b><br>
+${escapeHTML(
+order.phone ||
+"Not provided"
+)}
+</p>
+
+
+<p>
+<b>🛒 Grocery Items:</b><br>
+${escapeHTML(
+order.items ||
+"No items"
+)}
+</p>
+
+
+<p>
+<b>📍 Pickup:</b><br>
+${escapeHTML(
+order.pickupLocation ||
+order.pickup ||
+"Not provided"
+)}
+</p>
+
+
+<p>
+<b>🏠 Delivery:</b><br>
+${escapeHTML(
+order.deliveryLocation ||
+order.delivery ||
+"Not provided"
+)}
+</p>
+
+
+<hr>
+
+
+<h4>🛵 Assign Rider</h4>
+
+
+<select id="rider-${id}">
+
+${riderOptions}
+
+</select>
+
+
+<button
+class="orange"
+onclick="assignRider('${id}')">
+
+🛵 Assign Rider
+
+</button>
+
+
+<div class="grid">
+
+
+<button
+onclick="changeStatus(
+'${id}',
+'Accepted'
+)">
+
+✅ Accept
+
+</button>
+
+
+<button
+class="blue"
+onclick="changeStatus(
+'${id}',
+'Shopping Started'
+)">
+
+🛒 Shopping Started
+
+</button>
+
+
+<button
+class="blue"
+onclick="changeStatus(
+'${id}',
+'Out for Delivery'
+)">
+
+🚚 Out for Delivery
+
+</button>
+
+
+<button
+onclick="changeStatus(
+'${id}',
+'Delivered'
+)">
+
+✅ Delivered
+
+</button>
+
+
+</div>
+
+
+<button
+class="red"
+onclick="changeStatus(
+'${id}',
+'Cancelled'
+)">
+
+❌ Cancel Order
+
+</button>
+
+
+</div>
+
+`;
+
+}).join("");
+
+}
+
+
+/* ASSIGN RIDER */
+
+window.assignRider =
+async function(orderID){
+
+const select =
+document.getElementById(
+"rider-" + orderID
+);
+
+const rider =
+select.value;
+
+
+if(!rider){
+
+alert(
+"Please select a rider first."
+);
+
+return;
+
+}
+
+
+try{
+
+await update(
+ref(db,"orders/" + orderID),
+{
+
+rider:rider,
+
+status:"Rider Assigned"
+
+}
+);
+
+
+alert(
+"✅ " +
+rider +
+" assigned to " +
+orderID
+);
+
+
+}catch(error){
+
+alert(
+"Error assigning rider: " +
+error.message
+);
+
+}
+
+};
+
+
+/* CHANGE ORDER STATUS */
+
+window.changeStatus =
+async function(orderID,newStatus){
+
+try{
+
+await update(
+ref(db,"orders/" + orderID),
+{
+
+status:newStatus
+
+}
+);
+
+}catch(error){
+
+alert(
+"Error: " +
+error.message
+);
+
+}
+
+};
+
+
+/* AUTO LOGIN */
+
+if(
+sessionStorage.getItem(
+"adminLoggedIn"
+) === "true"
+){
+
+document
+.getElementById("login")
+.classList.add("hidden");
+
+document
+.getElementById("app")
+.classList.remove("hidden");
+
+listenOrders();
+
+}
+
+</script>
+
+</body>
+</html>w
